@@ -3,9 +3,13 @@
 #include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #define NUM_THREADS 9
 #define ELEMENTS 9
+#define NOME_ARQUIVO "1.txt"
+
+int sudoku[9][9];
 
 void *coluna(void *param);
 void *linha(void *param);
@@ -19,6 +23,37 @@ struct QUADRANTE
 
 int main(int argc, char *argv[])
 {
+     
+    FILE *arquivo;
+
+    arquivo = fopen(strcat("sudokus/",NOME_ARQUIVO), "r");
+    if(arquivo == NULL){
+        printf("arquivo nao encontrado.");
+        system("pause");
+        return -1;
+    }
+    
+    for(int i=0; i<9; i++){
+        for(int j=0; j<9; j++){
+            if(fscanf(arquivo, "%d ", &sudoku[i][j])){
+                continue;   
+            }
+            else{
+                if(fscanf(arquivo, "%d\n", &sudoku[i][j]) || fscanf(arquivo, "%dEOF", &sudoku[i][j])){
+                    continue;
+                }else{
+                    printf("Arquivo com formato incorreto");
+                    return -1;
+                }
+                
+            }
+        }
+    }
+    printf("Arquivo lido.");
+
+
+
+    
     pthread_t tid_quadrante[NUM_THREADS];
     pthread_attr_t attrs[NUM_THREADS];
 
