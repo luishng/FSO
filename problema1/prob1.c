@@ -1,4 +1,4 @@
-// gcc pthread.c -o pthread -lpthread
+// gcc prob1.c -o prob1.out -lpthread
 
 #include <pthread.h>
 #include <stdio.h>
@@ -17,9 +17,20 @@ void *coluna();
 void *linha();
 void *grid(void *param);
 
+const int INDEX[9][2] = {
+                        {0, 0}, 
+                        {0, 1},
+                        {0, 2},
+                        {1, 0},
+                        {1, 1},
+                        {1, 2},
+                        {2, 0},
+                        {2, 1},
+                        {2, 2}};
 int sudoku[9][9];
 int sudoku_coluna = 1;
 int sudoku_linha = 1;
+int sudoku_grid = 1;
 
 int main()
 {
@@ -79,7 +90,7 @@ int main()
         pthread_join(tid_quadrante[i], NULL);
     }
 
-    if(sudoku_linha && sudoku_coluna){
+    if(sudoku_linha && sudoku_coluna && sudoku_grid){
         printf("Sudoku Valido\n");
     } else {
         printf("Sudoku Invalido\n");
@@ -91,7 +102,37 @@ int main()
 void *grid(void *param)
 {
     struct QUADRANTE *arg = (struct QUADRANTE *)param;
-    int id = arg->id;
+    int numero_quadrante = arg->id;
+    int i, j, k, numero_repetido = 0;
+
+    int linha_inicial = INDEX[numero_quadrante][0]*3;
+    int coluna_inicial = INDEX[numero_quadrante][1]*3;
+    int grid[9];
+
+    //guardando valores do quadrante em um array
+    for(i = 0; i < 3; i++){
+        for(j = 0; j < 3; j++){
+            grid[i*3+j] = sudoku[i+linha_inicial][j+coluna_inicial];
+        }
+    }
+
+    for(j = 0; j < 9; j++)
+    {
+        for(k = j + 1; k < 9; k++)
+        {
+            if(grid[j] == grid[k])
+            {
+                numero_repetido++;
+                break;
+            }
+        }
+    }
+
+    if(numero_repetido != 0){
+        sudoku_grid = 0;
+    }
+
+    printf("Fim da thread grid de id: %d\n", numero_quadrante);
 
     pthread_exit(0);
 }
