@@ -15,11 +15,12 @@
 #define RECEBENDO_AJUDA 1
 #define ESPERANDO 2
 
-int gera_random(int minimo, int modulo);
+unsigned int gera_random(int minimo, int modulo);
+void clean_semaphores();
 
 sem_t *sem_fila, *sem_cadeira_monitor, *sem_monitor;
 
-//-1 segnifica q n tem ninguem sendo ajudado
+//-1 significa que nao tem ninguem sendo ajudado
 int aluno_sendo_ajudado = -1;
 
 struct Aluno
@@ -29,32 +30,32 @@ struct Aluno
 };
 
 void *liga_monitor(){
-    
     int estado = DORMINDO;
 
     while(1){
         if(estado == DORMINDO){
-            printf("Monitor: está dormindo.\n");
+            printf("Monitor: esta dormindo.\n");
             sem_wait(sem_monitor);
-            estado= AJUDANDO;
+            estado = AJUDANDO;
         }else if(estado == AJUDANDO){
-            printf("Monitor: ajudando aluno %d", aluno_sendo_ajudado);
-            while(aluno_sendo_ajudado>0){
+            printf("Monitor: Esta ajudando o aluno: %d\n", aluno_sendo_ajudado);
+
+            while(aluno_sendo_ajudado > 0){
                 sleep(1);
             }
-            estado=DORMINDO;
+    
+            estado = DORMINDO;
         }
     }
 }
 
 void *liga_aluno(void *param){
-
     struct Aluno *aluno = (struct Aluno *)param;
     int id = aluno->id;
     int max_tentativas = aluno->max_tentativas;
     int tentativa = 0;
     int estado = PROGRAMANDO;
-    int tempo;
+    unsigned int tempo;
 
     while(tentativa < max_tentativas){
         if(estado == PROGRAMANDO){
@@ -85,25 +86,37 @@ void *liga_aluno(void *param){
             }
         }
     }
+
     printf("O Aluno %d foi embora feliz.\n", id);
     pthread_exit(0);
-    
 }
 
-int gera_random(int minimo,int modulo){
-    return (minimo + (random()%(modulo+1)))%modulo;
+unsigned int gera_random(int minimo, int maximo){
+    return (rand() % (maximo - minimo + 1)) + minimo;
 }
+
+void clean_semaphores(){
+    sem_unlink("fila");   
+    sem_unlink("cadeira_monitor");   
+    sem_unlink("monitor");   
+    sem_close(sem_fila);   
+    sem_close(sem_cadeira_monitor);   
+    sem_close(sem_monitor);  
+}
+
 int main(){
     int i;
+    srand(time(NULL));
     int numero_alunos = gera_random(3, 40);
     int numero_cadeiras = numero_alunos/2 + numero_alunos%2;
 
+    clean_semaphores();
+    
     printf("Sistema: exitem %d alunos e %d cadeiras.\n", numero_alunos, numero_cadeiras);
-
+    
     sem_fila = sem_open("fila", O_CREAT, 0644, numero_cadeiras);
     sem_cadeira_monitor = sem_open("cadeira_monitor", O_CREAT, 0644, 1);
     sem_monitor = sem_open("monitor", O_CREAT, 0644, 0);
-
 
     pthread_t tid_alunos[numero_alunos];
     pthread_attr_t attrs_alunos[numero_alunos];
@@ -119,17 +132,18 @@ int main(){
     for(i = 1; i <= numero_alunos; i++)
     {
         alunos[i].id = i;
+        alunos[i].max_tentativas = 3;
         pthread_attr_init(&attrs_alunos[i]);
         pthread_create(&tid_alunos[i], &attrs_alunos[i], liga_aluno, &alunos[i]);
     }
 
-    for(int i = 0; i < numero_alunos; i++)
+    for(i = 1; i <= numero_alunos; i++)
     {
         pthread_join(tid_alunos[i], NULL);
     }
-    printf("Todos os alunos acabaram.");
 
-    pthread_cancel(tid_monitor);
+    printf("\nTodos os alunos acabaram.\n\n");
+    pthread_cancel(tid_monitor);  
 
     return 0;
 }
