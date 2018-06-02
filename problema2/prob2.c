@@ -35,6 +35,7 @@ void finalizar(){
     printf(".\n.\n.\n.\n.\n.\nMonitoria encerrada com sucesso.\n");
     exit(0);
 }
+
 void *liga_monitor(){
     int estado = DORMINDO;
 
@@ -45,7 +46,7 @@ void *liga_monitor(){
             estado = AJUDANDO;
         }else if(estado == AJUDANDO){
             printf("Monitor: Esta ajudando o aluno: %d\n", aluno_sendo_ajudado);
-
+            
             while(aluno_sendo_ajudado > 0){
                //nothing to do
             }
@@ -72,6 +73,8 @@ void *liga_aluno(void *param){
         }else if(estado == RECEBENDO_AJUDA){
             tentativa++;
             aluno_sendo_ajudado = id;
+            //acordando monitor
+            sem_post(sem_monitor);
             printf("Aluno %d: esta recebendo sua %d ajuda.\n", id, tentativa);
             tempo = gera_random(1,5);
             sleep(tempo);
@@ -87,8 +90,6 @@ void *liga_aluno(void *param){
                 sem_wait(sem_cadeira_monitor);
                 //saindo da fila
                 sem_post(sem_fila);
-                //acordando monitor
-                sem_post(sem_monitor);
                 estado = RECEBENDO_AJUDA;
             }
         }
