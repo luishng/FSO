@@ -5,6 +5,7 @@
 #include <fcntl.h>
 #include <math.h>
 #include <errno.h>
+#include <signal.h>
 
 //estados do monitor AE
 #define AJUDANDO 0
@@ -29,6 +30,11 @@ struct Aluno
     int max_tentativas;
 };
 
+void finalizar(){
+    clean_semaphores();
+    printf(".\n.\n.\n.\n.\n.\nMonitoria encerrada com sucesso.\n");
+    exit(0);
+}
 void *liga_monitor(){
     int estado = DORMINDO;
 
@@ -105,12 +111,12 @@ void clean_semaphores(){
 }
 
 int main(){
+    signal(SIGINT, finalizar);
     int i;
     srand(time(NULL));
     int numero_alunos = gera_random(3, 40);
     int numero_cadeiras = numero_alunos/2 + numero_alunos%2;
 
-    clean_semaphores();
     
     printf("Sistema: exitem %d alunos e %d cadeiras.\n", numero_alunos, numero_cadeiras);
     
@@ -143,7 +149,9 @@ int main(){
     }
 
     printf("\nTodos os alunos acabaram.\n\n");
-    pthread_cancel(tid_monitor);  
+    pthread_cancel(tid_monitor);
+
+    clean_semaphores(); 
 
     return 0;
 }
