@@ -8,8 +8,9 @@
 #include <signal.h>
 
 //estados do monitor AE
-#define AJUDANDO 0
-#define DORMINDO 1
+#define PROCURANDO 0
+#define AJUDANDO 1
+#define DORMINDO 2
 
 //estados do aluno
 #define PROGRAMANDO 0
@@ -23,6 +24,7 @@ sem_t *sem_fila, *sem_cadeira_monitor, *sem_monitor;
 
 //-1 significa que nao tem ninguem sendo ajudado
 int aluno_sendo_ajudado = -1;
+int numero_cadeiras = 0;
 
 struct Aluno
 {
@@ -37,10 +39,21 @@ void finalizar(){
 }
 
 void *liga_monitor(){
-    int estado = DORMINDO;
+    int estado = PROCURANDO;
+    int cadeiras_disponiveis_fila = 0;
 
     while(1){
-        if(estado == DORMINDO){
+        sem_getvalue(sem_fila, &cadeiras_disponiveis_fila); 
+        if(estado == PROCURANDO){
+            printf("Monitor: olha a fila\n");
+            if(cadeiras_disponiveis_fila == numero_cadeiras){
+                printf("Monitor: nao econtrou ninguem.\n");
+                estado = DORMINDO;
+            }else{
+                printf("Monitor: encontrou alguem na fila.\n");
+                estado = AJUDANDO;
+            }
+        }else if(estado == DORMINDO){
             printf("Monitor: esta dormindo.\n");
             sem_wait(sem_monitor);
             estado = AJUDANDO;
@@ -51,7 +64,7 @@ void *liga_monitor(){
                //nothing to do
             }
     
-            estado = DORMINDO;
+            estado = PROCURANDO;
         }
     }
 }
@@ -63,6 +76,7 @@ void *liga_aluno(void *param){
     int tentativa = 0;
     int estado = PROGRAMANDO;
     unsigned int tempo;
+    int sem_monitor_value;
 
     while(tentativa < max_tentativas){
         if(estado == PROGRAMANDO){
@@ -74,7 +88,10 @@ void *liga_aluno(void *param){
             tentativa++;
             aluno_sendo_ajudado = id;
             //acordando monitor
-            sem_post(sem_monitor);
+            sem_getvalue(sem_monitor, &sem_monitor_value);
+            if(sem_monitor_value == 0){
+                sem_post(sem_monitor);
+            }
             printf("Aluno %d: esta recebendo sua %d ajuda.\n", id, tentativa);
             tempo = gera_random(1,5);
             sleep(tempo);
@@ -82,7 +99,7 @@ void *liga_aluno(void *param){
             estado = PROGRAMANDO;
             sem_post(sem_cadeira_monitor);
         }else if(estado == ESPERANDO){
-            if(sem_trywait(sem_fila) == EAGAIN){
+            if(sem_trywait(sem_fila) == -1){
                 estado = PROGRAMANDO;
                 printf("Aluno %d: não encontrou espeço na fila e voltara a programar.\n", id);
             }else{
@@ -95,7 +112,7 @@ void *liga_aluno(void *param){
         }
     }
 
-    printf("O Aluno %d foi embora feliz.\n", id);
+    printf("O Aluno %d foi embora feliz.-----------------------------\n", id);
     pthread_exit(0);
 }
 
@@ -112,12 +129,25 @@ void clean_semaphores(){
     sem_close(sem_monitor);  
 }
 
+void mostra_sem_values(){
+
+    int sem_fila_value, sem_monitor_value, sem_cadeira_monitor_value;
+    sem_getvalue(sem_monitor, &sem_monitor_value);
+    sem_getvalue(sem_fila, &sem_fila_value);
+    sem_getvalue(sem_cadeira_monitor, &sem_cadeira_monitor_value);
+
+    printf("System: sem_monitor: %d\n", sem_monitor_value);
+    printf("System: sem_fila: %d\n", sem_fila_value);
+    printf("System: sem_cadeira_monitor: %d\n", sem_cadeira_monitor_value);    
+}
+
 int main(){
+    clean_semaphores();
     signal(SIGINT, finalizar);
     int i;
     srand(time(NULL));
     int numero_alunos = gera_random(3, 40);
-    int numero_cadeiras = numero_alunos/2 + numero_alunos%2;
+    numero_cadeiras = numero_alunos/2 + numero_alunos%2;
 
     
     printf("Sistema: exitem %d alunos e %d cadeiras.\n", numero_alunos, numero_cadeiras);
@@ -125,6 +155,8 @@ int main(){
     sem_fila = sem_open("fila", O_CREAT, 0644, numero_cadeiras);
     sem_cadeira_monitor = sem_open("cadeira_monitor", O_CREAT, 0644, 1);
     sem_monitor = sem_open("monitor", O_CREAT, 0644, 0);
+
+    mostra_sem_values();
 
     pthread_t tid_alunos[numero_alunos];
     pthread_attr_t attrs_alunos[numero_alunos];
@@ -150,8 +182,10 @@ int main(){
         pthread_join(tid_alunos[i], NULL);
     }
 
-    printf("\nTodos os alunos acabaram.\n\n");
     pthread_cancel(tid_monitor);
+    printf("\nTodos os alunos acabaram.\n\n");
+
+    mostra_sem_values();
 
     clean_semaphores(); 
 
