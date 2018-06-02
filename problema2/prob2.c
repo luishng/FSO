@@ -47,7 +47,7 @@ void *liga_monitor(){
             printf("Monitor: Esta ajudando o aluno: %d\n", aluno_sendo_ajudado);
 
             while(aluno_sendo_ajudado > 0){
-                sleep(1);
+               //nothing to do
             }
     
             estado = DORMINDO;
@@ -81,6 +81,7 @@ void *liga_aluno(void *param){
         }else if(estado == ESPERANDO){
             if(sem_trywait(sem_fila) == EAGAIN){
                 estado = PROGRAMANDO;
+                printf("Aluno %d: não encontrou espeço na fila e voltara a programar.\n", id);
             }else{
                 //sentando na cadeira do monitor
                 sem_wait(sem_cadeira_monitor);
