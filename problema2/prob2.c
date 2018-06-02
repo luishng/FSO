@@ -161,8 +161,8 @@ int main(){
 
     mostra_sem_values();
 
-    pthread_t tid_alunos[numero_alunos];
-    pthread_attr_t attrs_alunos[numero_alunos];
+    pthread_t tid_alunos[numero_alunos+1];
+    pthread_attr_t attrs_alunos[numero_alunos+1];
 
     pthread_t tid_monitor;
     pthread_attr_t attr_monitor;
@@ -170,7 +170,7 @@ int main(){
     pthread_attr_init(&attr_monitor);
     pthread_create(&tid_monitor, &attr_monitor, liga_monitor, NULL);
 
-    struct Aluno alunos[numero_alunos];
+    struct Aluno alunos[numero_alunos+1];
     
     for(i = 1; i <= numero_alunos; i++)
     {
