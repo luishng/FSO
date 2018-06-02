@@ -4,7 +4,7 @@
 #include <semaphore.h>
 #include <fcntl.h>
 #include <math.h>
-#include <errno.h>
+#include <unistd.h>
 #include <signal.h>
 
 //estados do monitor AE
@@ -47,7 +47,7 @@ void *liga_monitor(){
         if(estado == PROCURANDO){
             printf("Monitor: olha a fila\n");
             if(cadeiras_disponiveis_fila == numero_cadeiras){
-                printf("Monitor: nao econtrou ninguem.\n");
+                printf("Monitor: nao encontrou ninguem.\n");
                 estado = DORMINDO;
             }else{
                 printf("Monitor: encontrou alguem na fila.\n");
@@ -58,6 +58,10 @@ void *liga_monitor(){
             sem_wait(sem_monitor);
             estado = AJUDANDO;
         }else if(estado == AJUDANDO){
+            while(aluno_sendo_ajudado < 0){
+               //nothing to do
+            }
+            
             printf("Monitor: Esta ajudando o aluno: %d\n", aluno_sendo_ajudado);
             
             while(aluno_sendo_ajudado > 0){
@@ -101,7 +105,7 @@ void *liga_aluno(void *param){
         }else if(estado == ESPERANDO){
             if(sem_trywait(sem_fila) == -1){
                 estado = PROGRAMANDO;
-                printf("Aluno %d: não encontrou espeço na fila e voltara a programar.\n", id);
+                printf("Aluno %d: nao encontrou espaco na fila e voltara a programar.\n", id);
             }else{
                 //sentando na cadeira do monitor
                 sem_wait(sem_cadeira_monitor);
@@ -112,7 +116,7 @@ void *liga_aluno(void *param){
         }
     }
 
-    printf("O Aluno %d foi embora feliz.-----------------------------\n", id);
+    printf("O Aluno %d foi embora feliz.\n", id);
     pthread_exit(0);
 }
 
@@ -136,21 +140,20 @@ void mostra_sem_values(){
     sem_getvalue(sem_fila, &sem_fila_value);
     sem_getvalue(sem_cadeira_monitor, &sem_cadeira_monitor_value);
 
-    printf("System: sem_monitor: %d\n", sem_monitor_value);
-    printf("System: sem_fila: %d\n", sem_fila_value);
-    printf("System: sem_cadeira_monitor: %d\n", sem_cadeira_monitor_value);    
+    printf("Sistema: sem_monitor: %d\n", sem_monitor_value);
+    printf("Sistema: sem_fila: %d\n", sem_fila_value);
+    printf("Sistema: sem_cadeira_monitor: %d\n\n", sem_cadeira_monitor_value);    
 }
 
 int main(){
     clean_semaphores();
     signal(SIGINT, finalizar);
-    int i;
     srand(time(NULL));
+    int i;
     int numero_alunos = gera_random(3, 40);
     numero_cadeiras = numero_alunos/2 + numero_alunos%2;
 
-    
-    printf("Sistema: exitem %d alunos e %d cadeiras.\n", numero_alunos, numero_cadeiras);
+    printf("Sistema: exitem %d alunos e %d cadeiras.\n\n", numero_alunos, numero_cadeiras);
     
     sem_fila = sem_open("fila", O_CREAT, 0644, numero_cadeiras);
     sem_cadeira_monitor = sem_open("cadeira_monitor", O_CREAT, 0644, 1);
