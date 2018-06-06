@@ -107,6 +107,7 @@ void *liga_aluno(void *param){
                 estado = PROGRAMANDO;
                 printf("Aluno %d: nao encontrou espaco na fila e voltara a programar.\n", id);
             }else{
+                printf("Aluno %d: entrou fila.\n", id);
                 //sentando na cadeira do monitor
                 sem_wait(sem_cadeira_monitor);
                 //saindo da fila
