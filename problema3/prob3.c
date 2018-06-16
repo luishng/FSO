@@ -7,11 +7,8 @@
 #define MASCARA_DESLOCAMENTO 255
 //1111 1111 0000 0000
 #define MASCARA_PAGINA 65280
-
 #define TAMANHO_QUADRO 256
-
 #define QUANTIDADE_QUADROS 256  
-
 #define TAMANHO_TLB 16
 
 FILE *hdd, *entrada;
@@ -21,6 +18,8 @@ int acessos = 0;
 int tlb_usada = 0;
 int erros_pagina = 0;
 int quadro_disponivel = 0;
+int tamanho_ocupado = 0;
+int posicao_tlb = 0;
 
 int deslocamento = -1;
 int pagina = -1;
@@ -34,15 +33,30 @@ struct tlbData {
 
 struct tlbData tlb[TAMANHO_TLB]; 
 
+void inserir_tlb(int pagina, int quadro){
+      if(tamanho_ocupado == TAMANHO_TLB)
+        tamanho_ocupado--;
 
-void pega_memoria_fisica(int endereco_logico){
+      // FIFO
+      for(posicao_tlb = tamanho_ocupado; posicao_tlb > 0; posicao_tlb--) {
+        tlb[posicao_tlb].pagina = tlb[posicao_tlb-1].pagina;
+        tlb[posicao_tlb].quadro = tlb[posicao_tlb-1].quadro;
+      }
+
+      if(tamanho_ocupado <= 15)
+        tamanho_ocupado++;
+
+      tlb[0].pagina = pagina;
+      tlb[0].quadro = quadro;
+}
+
+void consulta_memoria_fisica(int endereco_logico){
     acessos++;
     deslocamento = endereco_logico & MASCARA_DESLOCAMENTO;
     pagina = (endereco_logico & MASCARA_PAGINA) >> 8;
     char buffer[TAMANHO_QUADRO];
     int endereco_fisico = -1;
     int valor = -1;
-
     int i;
     int quadro_achado = -1;
 
@@ -53,7 +67,6 @@ void pega_memoria_fisica(int endereco_logico){
         }
     }
 
-
     if(quadro_achado != -1){
         valor = memoria_fisica[quadro_achado * TAMANHO_QUADRO + deslocamento];
     }else{
@@ -61,14 +74,13 @@ void pega_memoria_fisica(int endereco_logico){
             quadro_achado = tabela_pagina[pagina];
             valor = memoria_fisica[quadro_achado * TAMANHO_QUADRO + deslocamento];
         }else{
-
             fseek(hdd,endereco_fisico, SEEK_SET);
             fread(buffer, sizeof(char),TAMANHO_QUADRO, hdd);
             
             quadro_achado = quadro_disponivel;
 
             for(i = 0; i<TAMANHO_QUADRO; i++){
-                memoria_fisica[quadro_achado * TAMANHO_QUADRO + i] = atoi(buffer[i]);
+                memoria_fisica[quadro_achado * TAMANHO_QUADRO + i] = buffer[i];
             }
             valor = buffer[deslocamento];
 
@@ -77,26 +89,44 @@ void pega_memoria_fisica(int endereco_logico){
             erros_pagina++;
             
             inserir_tlb(pagina, quadro_achado);
-
         }
     } 
 
     endereco_fisico = quadro_achado*TAMANHO_QUADRO + deslocamento;
 
-    printf("Endereço logico: Endereço fisico: Quadro: Deslocamento: Valor ASCII:\n");
+    printf("Endereco logico: %d Endereco fisico: %d Quadro: %d Deslocamento: %d Valor ASCII: %d\n", 
+        endereco_logico, endereco_fisico, quadro_achado, deslocamento, valor);
 }
 
 
 int main() {
     int i;
+    int endereco_logico;   
+    float taxa_erro_pagina, taxa_sucesso_TLB;
+
     for(i = 0; i < TAMANHO_QUADRO; i++){
         tabela_pagina[i] = -1;
     }
     
     hdd = fopen(NOME_ARQUIVO_HDD,"rb");
     entrada = fopen(NOME_ARQUIVO_ENDERECOS,"r");
+
+    while(fscanf(entrada, "%d", &endereco_logico) == 1) {
+        consulta_memoria_fisica(endereco_logico);
+    }
+
+    taxa_erro_pagina = ((float)erros_pagina/(float)acessos) * 100.0;
+    taxa_sucesso_TLB = ((float)tlb_usada/(float)acessos) * 100.0;
+
+    printf("\nEstatisticas:\n");
+    printf("Numero de acessos: %d\n", acessos);
+    printf("Quantidade de acertos TLB: %d\n", tlb_usada);
+    printf("Quantidade de erros de pagina: %d\n", erros_pagina);
+    printf("Taxa de erros de pagina: %.2f%%\n", taxa_erro_pagina);
+    printf("Taxa de sucesso da TLB: %.2f%%\n", taxa_sucesso_TLB);
  
-    
     fclose(hdd);
+    fclose(entrada);
+
     return 0;
 }
