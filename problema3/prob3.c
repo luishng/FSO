@@ -2,7 +2,6 @@
 #include <stdlib.h>
 
 #define NOME_ARQUIVO_HDD "BACKING_STORE.bin"
-#define NOME_ARQUIVO_ENDERECOS "addresses.txt"
 //0000 0000 1111 1111
 #define MASCARA_DESLOCAMENTO 255
 //1111 1111 0000 0000
@@ -99,17 +98,22 @@ void consulta_memoria_fisica(int endereco_logico){
 }
 
 
-int main() {
+int main(int argc, char *argv[]) {
     int i;
     int endereco_logico;   
     float taxa_erro_pagina, taxa_sucesso_TLB;
+
+    if (argc != 2) {
+        fprintf(stderr,"Use: ./a.out [input file].txt\n");
+        return -1;
+    }
 
     for(i = 0; i < TAMANHO_QUADRO; i++){
         tabela_pagina[i] = -1;
     }
     
-    hdd = fopen(NOME_ARQUIVO_HDD,"rb");
-    entrada = fopen(NOME_ARQUIVO_ENDERECOS,"r");
+    hdd = fopen(NOME_ARQUIVO_HDD, "rb");
+    entrada = fopen(argv[1], "r");
 
     while(fscanf(entrada, "%d", &endereco_logico) == 1) {
         consulta_memoria_fisica(endereco_logico);
